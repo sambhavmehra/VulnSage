@@ -888,6 +888,14 @@ else:
                     expanded=(sev in ['Critical','High'])
                 ):
                     for v in groups[sev]:
+                        verification_label = v.get('confidence_band', 'Suspected')
+                        verification_status = str(v.get('verification_status', 'suspected')).lower()
+                        verification_color = {
+                            'confirmed': '#34d399',
+                            'probable': '#fbbf24',
+                            'suspected': '#fb923c',
+                            'info': '#94a3b8'
+                        }.get(verification_status, '#94a3b8')
                         st.markdown(f"""
                         <div style="background:rgba(255,255,255,.02);
                             border:1px solid rgba(255,255,255,.05);
@@ -899,6 +907,11 @@ else:
                                     color:{SEV_COLORS[sev]};background:rgba(255,255,255,.03);
                                     border:1px solid rgba(255,255,255,.08);padding:3px 12px;border-radius:50px;">
                                     {v['confidence']}% confidence
+                                </span>
+                                <span style="font-family:'JetBrains Mono',monospace;font-size:.68rem;
+                                    color:{verification_color};background:rgba(255,255,255,.03);
+                                    border:1px solid rgba(255,255,255,.08);padding:3px 12px;border-radius:50px;">
+                                    {verification_label}
                                 </span>
                             </div>
                             <div style="font-family:'JetBrains Mono',monospace;font-size:.78rem;color:#64748b;margin-bottom:10px;word-break:break-all;">{v['url']}</div>
@@ -1036,8 +1049,8 @@ else:
         with c2:
             st.download_button("📥 Markdown", data=rep['markdown_report'], file_name=f"report_{d}_{ts}.md", mime="text/markdown", use_container_width=True)
         with c3:
-            csv = "URL,Type,Severity,Confidence,Description\n" + "".join(
-                f'"{v["url"]}","{v["type"]}","{v["severity"]}","{v["confidence"]}","{v["description"]}"\n'
+            csv = "URL,Type,Severity,Confidence,Verification,Description\n" + "".join(
+                f'"{v["url"]}","{v["type"]}","{v["severity"]}","{v["confidence"]}","{v.get("confidence_band","Suspected")}","{v["description"]}"\n'
                 for v in vulns)
             st.download_button("📥 CSV", data=csv, file_name=f"vulns_{d}_{ts}.csv", mime="text/csv", use_container_width=True)
 

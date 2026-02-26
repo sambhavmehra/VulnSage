@@ -120,6 +120,22 @@
       "timestamp": "2026-02-26T20:50:01.527449",
       "date": "2026-02-26",
       "time": "20:50:01"
+    },
+    {
+      "username": "admin",
+      "role": "admin",
+      "success": true,
+      "timestamp": "2026-02-26T21:36:47.682740",
+      "date": "2026-02-26",
+      "time": "21:36:47"
+    },
+    {
+      "username": "admin",
+      "role": "admin",
+      "success": true,
+      "timestamp": "2026-02-26T21:37:46.837898",
+      "date": "2026-02-26",
+      "time": "21:37:46"
     }
   ],
   "activity": [
@@ -136,6 +152,13 @@
       "timestamp": "2026-02-26T20:51:10.770093",
       "date": "2026-02-26",
       "time": "20:51:10"
+    },
+    {
+      "username": "admin",
+      "action": "Scanned sambhavmehra.me \u2014 1 subdomains, 6 vulns",
+      "timestamp": "2026-02-26T21:40:01.424034",
+      "date": "2026-02-26",
+      "time": "21:40:01"
     }
   ]
 }

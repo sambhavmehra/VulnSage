@@ -23,6 +23,7 @@ class ReportGenerator:
             'subdomains_scanned': len(subdomains),
             'total_vulnerabilities': len(vulnerabilities),
             'severity_breakdown': self._get_severity_breakdown(vulnerabilities),
+            'verification_breakdown': self._get_verification_breakdown(vulnerabilities),
             'vulnerability_types': self._get_vulnerability_types(vulnerabilities),
             'risk_metrics': self._get_risk_metrics(vulnerabilities)
         }
@@ -90,6 +91,24 @@ class ReportGenerator:
             types[vuln_type] = types.get(vuln_type, 0) + 1
 
         return types
+
+    def _get_verification_breakdown(self, vulnerabilities):
+        """Count vulnerabilities by verification confidence band."""
+        breakdown = {
+            'confirmed': 0,
+            'probable': 0,
+            'suspected': 0,
+            'info': 0
+        }
+
+        for vuln in vulnerabilities:
+            status = str(vuln.get('verification_status', 'suspected')).lower()
+            if status in breakdown:
+                breakdown[status] += 1
+            else:
+                breakdown['suspected'] += 1
+
+        return breakdown
 
     def _get_risk_metrics(self, vulnerabilities):
         """Calculate risk score statistics"""
@@ -173,6 +192,12 @@ class ReportGenerator:
         for vuln_type, count in scan_summary['vulnerability_types'].items():
             report += f"\n- **{vuln_type}:** {count}"
 
+        report += "\n\n### Verification Confidence\n"
+        report += f"\n- **Confirmed:** {scan_summary['verification_breakdown']['confirmed']}"
+        report += f"\n- **Probable:** {scan_summary['verification_breakdown']['probable']}"
+        report += f"\n- **Suspected:** {scan_summary['verification_breakdown']['suspected']}"
+        report += f"\n- **Informational:** {scan_summary['verification_breakdown']['info']}"
+
         # Add subdomain list
         report += "\n\n---\n\n## 🌐 Discovered Subdomains\n"
         for i, sub in enumerate(subdomains, 1):
@@ -228,6 +253,8 @@ class ReportGenerator:
 
                         report += f"\n- {risk_emoji} **Groq AI Risk Score: {risk_score}/100** ({risk_level})"
                         report += f"\n- **Confidence:** {vuln.get('confidence', 'N/A')}%"
+                        report += f"\n- **Verification Status:** {vuln.get('confidence_band', 'Suspected')}"
+                        report += f"\n- **Verification Signals:** {vuln.get('verification_signal_count', 0)}"
                         
                         # Show detection method if available
                         if vuln.get('detection_method'):
@@ -255,6 +282,11 @@ class ReportGenerator:
 
                         if vuln.get('business_impact'):
                             report += f"\n- **Business Impact:** {vuln['business_impact']}"
+
+                        if vuln.get('verification_evidence'):
+                            report += "\n- **Evidence:**"
+                            for item in vuln['verification_evidence'][:3]:
+                                report += f"\n  - {item}"
 
                         report += f"\n\n**💡 Recommendation:**\n{vuln.get('recommendation', 'Manual review required')}\n"
 
