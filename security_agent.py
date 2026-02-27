@@ -112,13 +112,37 @@ class SecurityAgent:
         """
         Main entry point: Autonomously analyze all scan results
         """
+        # Normalize incoming data to avoid runtime errors from malformed entries.
+        if not isinstance(domain_info, dict):
+            domain_info = {"domain": str(domain_info or "unknown")}
+        domain_info.setdefault("domain", "unknown")
+
+        normalized_vulns: List[Dict] = []
+        for i, vuln in enumerate(vulnerabilities or [], 1):
+            if isinstance(vuln, dict):
+                normalized_vulns.append(vuln)
+            elif isinstance(vuln, str):
+                normalized_vulns.append({
+                    "type": vuln,
+                    "severity": "Medium",
+                    "risk_score": 50,
+                    "id": i,
+                })
+            else:
+                normalized_vulns.append({
+                    "type": str(vuln),
+                    "severity": "Medium",
+                    "risk_score": 50,
+                    "id": i,
+                })
+
         self.state.add_thought(
-            f"Starting autonomous analysis of {len(vulnerabilities)} vulnerabilities for {domain_info['domain']}",
+            f"Starting autonomous analysis of {len(normalized_vulns)} vulnerabilities for {domain_info['domain']}",
             "initialization"
         )
         
         # Step 1: Prioritize vulnerabilities
-        prioritized = self._tool_prioritize_vulnerabilities(vulnerabilities, domain_info)
+        prioritized = self._tool_prioritize_vulnerabilities(normalized_vulns, domain_info)
         
         # Step 2: Analyze each vulnerability in priority order
         analysis_results = []
@@ -132,19 +156,49 @@ class SecurityAgent:
         
         # Step 4: Generate fix code for high-priority items
         fix_codes = []
-        for item in remediation_plan["immediate_actions"]:
-            fix_code = self._tool_generate_fix_code(item["vulnerability"])
-            fix_codes.append({
-                "vulnerability": item["vulnerability"],
-                "fix_code": fix_code
-            })
+        immediate_actions = remediation_plan.get("immediate_actions", [])
+        if not isinstance(immediate_actions, list):
+            immediate_actions = []
+
+        for item in immediate_actions:
+            if not isinstance(item, dict):
+                continue
+
+            vuln_ref = item.get("vulnerability")
+            vuln_obj = None
+
+            if isinstance(vuln_ref, dict):
+                vuln_obj = vuln_ref
+            elif isinstance(vuln_ref, str):
+                # AI may return only a vulnerability type string; build a minimal object.
+                vuln_obj = {
+                    "type": vuln_ref,
+                    "severity": item.get("severity", "High"),
+                    "description": item.get("action", "Immediate remediation action"),
+                }
+            elif isinstance(item.get("vulnerability_id"), int):
+                vuln_id = item.get("vulnerability_id")
+                if 1 <= vuln_id <= len(prioritized):
+                    vuln_obj = prioritized[vuln_id - 1]
+
+            if not vuln_obj:
+                continue
+
+            try:
+                fix_code = self._tool_generate_fix_code(vuln_obj)
+                fix_codes.append({
+                    "vulnerability": vuln_obj,
+                    "fix_code": fix_code
+                })
+            except Exception as e:
+                self.state.add_thought(f"Fix generation skipped: {e}", "error")
             
         return {
             "agent_session_id": self.state.session_id,
             "analysis_summary": {
-                "total_vulnerabilities": len(vulnerabilities),
-                "critical_count": sum(1 for v in vulnerabilities if v.get("severity") == "Critical"),
-                "high_count": sum(1 for v in vulnerabilities if v.get("severity") == "High"),
+                "total_vulnerabilities": len(normalized_vulns),
+                "critical_count": sum(1 for v in normalized_vulns if str(v.get("severity", "")).lower() == "critical"),
+                "high_count": sum(1 for v in normalized_vulns if str(v.get("severity", "")).lower() == "high"),
                 "analysis_completed": True
             },
             "prioritized_vulnerabilities": prioritized,

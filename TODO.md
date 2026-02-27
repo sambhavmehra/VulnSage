@@ -1,21 +1,33 @@
-# TODO - Admin Dashboard Enhancement
+# VulnSage Implementation TODO
 
-## Phase 1: Enhance admin_logger.py
-- [ ] Add filtering functions for logs (by date, user, action type)
-- [ ] Add pagination support
-- [ ] Add more detailed logging with additional metadata
-- [ ] Add search functionality
+## Phase 1: Dashboard for Scan Reports (Persistence)
+- [ ] Create reports storage module (reports_db.py)
+- [ ] Add save/load functionality for scan reports
+- [ ] Create reports dashboard UI in app_ai.py
+- [ ] Add view/delete/export functionality
 
-## Phase 2: Create Tab-Based Admin Dashboard in app_ai.py
-- [ ] Replace inline admin logs with tab-based navigation
-- [ ] Create Overview tab with summary metrics and charts
-- [ ] Create User Management tab (registered users list)
-- [ ] Create User Logs tab (registrations + logins with filtering)
-- [ ] Create Activity Logs tab (activity log with search/filter)
-- [ ] Create Scan History tab (view scan history)
+## Phase 2: Agentic AI Analysis Interface
+- [ ] Create agent analysis modal/panel component
+- [ ] Add real-time progress display
+- [ ] Show live analysis updates
+- [ ] Add progress indicators for remediation
+- [ ] Add cancel/stop functionality
 
-## Phase 3: Visual Improvements
-- [ ] Add charts for statistics
-- [ ] Add color-coded indicators
-- [ ] Add date range filters
-- [ ] Add export functionality for logs
+## Phase 3: Robustness Improvements
+- [ ] Add retry logic with exponential backoff to groq_orchestrator.py
+- [ ] Add input validation and sanitization
+- [ ] Add comprehensive error handling
+- [ ] Add logging throughout the application
+- [ ] Add timeout handling for all API calls
+- [ ] Add file existence checks before model loading
+
+## Phase 4: Model Accuracy Improvements
+- [ ] Enhance feature extraction in self_training_agent.py
+- [ ] Add ensemble methods for better predictions
+- [ ] Add cross-validation for model evaluation
+- [ ] Add feature engineering improvements
+- [ ] Add model versioning support
+
+## Progress Tracking
+Start Date: 
+End Date:

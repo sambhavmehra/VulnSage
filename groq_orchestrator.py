@@ -1,6 +1,14 @@
 """
 Groq AI Orchestrator - The Brain of the Scanner
 Handles all AI operations: domain recognition, vulnerability detection, and report generation
+
+Robustness Features:
+- Exponential backoff with jitter for retries
+- Circuit breaker pattern for API failures
+- Comprehensive error handling
+- Timeout management
+- Input validation and sanitization
+- Logging for debugging
 """
 
 import os
@@ -8,33 +16,194 @@ import json
 import requests
 import time
 import random
+import logging
+from datetime import datetime
 from dotenv import load_dotenv
 from urllib.parse import urlparse
+from typing import Optional, Dict, Any
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger('GroqOrchestrator')
 
 load_dotenv()
+
+
+class CircuitBreaker:
+    """Circuit breaker pattern to prevent cascading failures"""
+    
+    def __init__(self, failure_threshold: int = 5, timeout: int = 60):
+        self.failure_threshold = failure_threshold
+        self.timeout = timeout
+        self.failures = 0
+        self.last_failure_time = 0
+        self.state = "closed"  # closed, open, half-open
+    
+    def record_success(self):
+        """Record a successful API call"""
+        self.failures = 0
+        self.state = "closed"
+    
+    def record_failure(self):
+        """Record a failed API call"""
+        self.failures += 1
+        self.last_failure_time = time.time()
+        
+        if self.failures >= self.failure_threshold:
+            self.state = "open"
+            logger.warning(f"Circuit breaker opened after {self.failures} failures")
+    
+    def can_attempt(self) -> bool:
+        """Check if an API call attempt is allowed"""
+        if self.state == "closed":
+            return True
+        
+        if self.state == "open":
+            # Check if timeout has passed to try half-open
+            if time.time() - self.last_failure_time > self.timeout:
+                self.state = "half-open"
+                logger.info("Circuit breaker entering half-open state")
+                return True
+            return False
+        
+        # half-open state - allow one attempt
+        return True
+
 
 class GroqOrchestrator:
     """
     Central AI orchestrator using Groq Cloud for all intelligence operations
+    Includes robust error handling, retry logic, and circuit breaker
     """
 
     def __init__(self):
+        # Input validation for API key
         self.api_key = os.getenv("GROQ_API_KEY")
         if not self.api_key:
+            logger.error("GROQ_API_KEY not found in environment variables")
             raise ValueError("GROQ_API_KEY not found in environment variables")
+        
+        # Sanitize API key for logging (show only last 4 chars)
+        safe_key = f"...{self.api_key[-4:]}" if len(self.api_key) > 4 else "***"
+        logger.info(f"Initializing GroqOrchestrator with key: {safe_key}")
 
         self.base_url = "https://api.groq.com/openai/v1/chat/completions"
-        self.model = "llama-3.3-70b-versatile"
+        self.model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+        
+        # Robustness: Configurable retry parameters with defaults
         self.max_retries = int(os.getenv("GROQ_MAX_RETRIES", "5"))
         self.timeout = int(os.getenv("GROQ_TIMEOUT_SEC", "45"))
         self.rate_limit_per_min = int(os.getenv("GROQ_RATE_LIMIT_PER_MIN", "20"))
+        
+        # Calculate minimum interval between calls
         self.min_call_interval = 60.0 / max(1, self.rate_limit_per_min)
         self.last_call_ts = 0.0
+        
+        # Initialize session with custom adapters for robustness
         self.session = requests.Session()
+        self._setup_session()
+        
+        # Response cache
         self.response_cache = {}
+        self.cache_max_size = int(os.getenv("GROQ_CACHE_SIZE", "100"))
+        
+        # Circuit breaker for API failures
+        self.circuit_breaker = CircuitBreaker(
+            failure_threshold=int(os.getenv("CIRCUIT_BREAKER_THRESHOLD", "5")),
+            timeout=int(os.getenv("CIRCUIT_BREAKER_TIMEOUT", "60"))
+        )
+        
+        # Statistics tracking
+        self.stats = {
+            "total_calls": 0,
+            "successful_calls": 0,
+            "failed_calls": 0,
+            "cache_hits": 0,
+            "retries": 0
+        }
+        
+        logger.info(f"GroqOrchestrator initialized with model: {self.model}")
 
-    def _call_groq(self, prompt, temperature=0.1, max_tokens=2000):
-        """Make a call to Groq API"""
+    def _setup_session(self):
+        """Configure session with retry adapters and timeouts"""
+        from requests.adapters import HTTPAdapter
+        from urllib3.util.retry import Retry
+        
+        # Configure retry strategy
+        retry_strategy = Retry(
+            total=3,
+            backoff_factor=0.5,
+            status_forcelist=[429, 500, 502, 503, 504],
+            allowed_methods=["POST", "GET"]
+        )
+        
+        adapter = HTTPAdapter(
+            max_retries=retry_strategy,
+            pool_connections=10,
+            pool_maxsize=20
+        )
+        
+        self.session.mount("http://", adapter)
+        self.session.mount("https://", adapter)
+        
+        # Set default headers
+        self.session.headers.update({
+            "User-Agent": "VulnSage-Security-Scanner/2.1"
+        })
+
+    def _validate_prompt(self, prompt: str) -> str:
+        """Validate and sanitize input prompts"""
+        if not prompt:
+            logger.warning("Empty prompt received, using default")
+            return "Analyze for security vulnerabilities."
+        
+        # Truncate extremely long prompts
+        max_prompt_length = 50000
+        if len(prompt) > max_prompt_length:
+            logger.warning(f"Prompt truncated from {len(prompt)} to {max_prompt_length} chars")
+            prompt = prompt[:max_prompt_length]
+        
+        return prompt
+
+    def _calculate_backoff(self, attempt: int, base_delay: float = 1.0) -> float:
+        """Calculate exponential backoff with jitter"""
+        # Exponential backoff: base_delay * 2^attempt
+        delay = base_delay * (2 ** attempt)
+        # Add jitter (±25%)
+        jitter = delay * 0.25 * (random.random() * 2 - 1)
+        # Cap at 60 seconds
+        return min(delay + jitter, 60.0)
+
+    def _extract_json_from_response(self, response: str) -> str:
+        """Extract JSON from AI response that may contain code blocks"""
+        json_str = response or ""
+        # Handle fenced code blocks: ```json ... ``` or ``` ... ```
+        if "```json" in json_str:
+            json_str = json_str.split("```json", 1)[1].split("```", 1)[0]
+        elif "```" in json_str:
+            json_str = json_str.split("```", 1)[1].split("```", 1)[0]
+        return json_str.strip()
+
+    def _call_groq(self, prompt: str, temperature: float = 0.1, max_tokens: int = 2000) -> Optional[str]:
+        """Make a call to Groq API with robust error handling"""
+
+        # Validate and sanitize input
+        prompt = self._validate_prompt(prompt)
+        
+        # Check circuit breaker
+        if not self.circuit_breaker.can_attempt():
+            logger.warning("Circuit breaker is open, skipping API call")
+            return None
+
+        # Check cache
+        cache_key = f"{temperature}|{max_tokens}|{hash(prompt)}"
+        if cache_key in self.response_cache:
+            self.stats["cache_hits"] += 1
+            logger.debug("Cache hit for prompt")
+            return self.response_cache[cache_key]
 
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -57,18 +226,17 @@ class GroqOrchestrator:
             "max_tokens": max_tokens
         }
 
-        cache_key = f"{temperature}|{max_tokens}|{prompt}"
-        if cache_key in self.response_cache:
-            return self.response_cache[cache_key]
-
         for attempt in range(self.max_retries):
             try:
                 # Client-side throttling to reduce 429 bursts.
                 now = time.time()
                 elapsed = now - self.last_call_ts
                 if elapsed < self.min_call_interval:
-                    time.sleep(self.min_call_interval - elapsed)
+                    sleep_time = self.min_call_interval - elapsed
+                    logger.debug(f"Rate limiting: sleeping {sleep_time:.2f}s")
+                    time.sleep(sleep_time)
 
+                # Make API call with timeout
                 response = self.session.post(
                     self.base_url,
                     headers=headers,
@@ -76,6 +244,7 @@ class GroqOrchestrator:
                     timeout=self.timeout
                 )
                 self.last_call_ts = time.time()
+                self.stats["total_calls"] += 1
 
                 # Handle rate-limit responses with retry/backoff.
                 if response.status_code == 429:
@@ -83,30 +252,74 @@ class GroqOrchestrator:
                     if retry_after and str(retry_after).isdigit():
                         wait_sec = max(1.0, float(retry_after))
                     else:
-                        wait_sec = min(30.0, (2 ** attempt) + random.uniform(0.1, 1.0))
-                    print(f"[WARN] Groq rate limited (429). Retrying in {wait_sec:.1f}s "
-                          f"(attempt {attempt + 1}/{self.max_retries})")
+                        wait_sec = self._calculate_backoff(attempt)
+                    
+                    logger.warning(f"Rate limited (429). Retrying in {wait_sec:.1f}s "
+                                  f"(attempt {attempt + 1}/{self.max_retries})")
                     time.sleep(wait_sec)
+                    self.stats["retries"] += 1
+                    self.circuit_breaker.record_failure()
+                    continue
+
+                # Handle server errors
+                if response.status_code >= 500:
+                    wait_sec = self._calculate_backoff(attempt)
+                    logger.warning(f"Server error ({response.status_code}). Retrying in {wait_sec:.1f}s")
+                    time.sleep(wait_sec)
+                    self.stats["retries"] += 1
+                    self.circuit_breaker.record_failure()
                     continue
 
                 response.raise_for_status()
                 data = response.json()
                 content = data["choices"][0]["message"]["content"]
-                self.response_cache[cache_key] = content
+                
+                # Cache the response
+                if len(self.response_cache) < self.cache_max_size:
+                    self.response_cache[cache_key] = content
+                
+                self.stats["successful_calls"] += 1
+                self.circuit_breaker.record_success()
+                logger.debug("API call successful")
                 return content
 
-            except requests.exceptions.RequestException as e:
-                wait_sec = min(20.0, (2 ** attempt) + random.uniform(0.1, 1.0))
-                print(f"[WARN] Groq request failed: {e}. Retrying in {wait_sec:.1f}s "
-                      f"(attempt {attempt + 1}/{self.max_retries})")
+            except requests.exceptions.Timeout as e:
+                wait_sec = self._calculate_backoff(attempt)
+                logger.warning(f"Request timeout: {e}. Retrying in {wait_sec:.1f}s "
+                            f"(attempt {attempt + 1}/{self.max_retries})")
                 time.sleep(wait_sec)
+                self.stats["retries"] += 1
+                self.circuit_breaker.record_failure()
                 continue
+                
+            except requests.exceptions.RequestException as e:
+                wait_sec = self._calculate_backoff(attempt)
+                logger.warning(f"Groq request failed: {e}. Retrying in {wait_sec:.1f}s "
+                            f"(attempt {attempt + 1}/{self.max_retries})")
+                time.sleep(wait_sec)
+                self.stats["retries"] += 1
+                self.circuit_breaker.record_failure()
+                continue
+                
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse API response: {e}")
+                self.stats["failed_calls"] += 1
+                self.circuit_breaker.record_failure()
+                continue
+                
             except Exception as e:
-                print(f"[ERROR] Groq API call failed: {e}")
+                logger.error(f"Unexpected error in API call: {e}")
+                self.stats["failed_calls"] += 1
+                self.circuit_breaker.record_failure()
                 return None
 
-        print("[ERROR] Groq API call failed after retries due to rate limiting or request errors.")
+        logger.error("Groq API call failed after all retries")
+        self.stats["failed_calls"] += 1
         return None
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Get orchestrator statistics"""
+        return self.stats.copy()
 
     def recognize_domain(self, user_input):
         """
@@ -140,18 +353,12 @@ Input: {user_input}
 
         if response:
             try:
-                # Extract JSON from response
-                json_str = response
-                if "```json" in response:
-                    json_str = response.split("```json")[1].split("```")[0]
-                elif "```" in response:
-                    json_str = response.split("```")[1].split("```")[0]
-
-                domain_info = json.loads(json_str.strip())
+                json_str = self._extract_json_from_response(response)
+                domain_info = json.loads(json_str)
                 return domain_info
 
             except json.JSONDecodeError:
-                print("[WARN] AI response not valid JSON, using fallback")
+                logger.warning("AI response not valid JSON, using fallback")
 
         # Fallback to basic parsing
         parsed = urlparse(user_input if '://' in user_input else f'http://{user_input}')
@@ -233,14 +440,8 @@ Be precise and only report real vulnerabilities, not theoretical ones.
 
         if response:
             try:
-                # Extract JSON array
-                json_str = response
-                if "```json" in response:
-                    json_str = response.split("```json")[1].split("```")[0]
-                elif "```" in response:
-                    json_str = response.split("```")[1].split("```")[0]
-
-                vulnerabilities = json.loads(json_str.strip())
+                json_str = self._extract_json_from_response(response)
+                vulnerabilities = json.loads(json_str)
 
                 # Ensure it's a list
                 if isinstance(vulnerabilities, dict):
@@ -251,7 +452,7 @@ Be precise and only report real vulnerabilities, not theoretical ones.
                 return vulnerabilities
 
             except json.JSONDecodeError as e:
-                print(f"[WARN] AI vulnerability analysis failed to parse JSON: {e}")
+                logger.warning(f"AI vulnerability analysis failed to parse JSON: {e}")
                 return []
 
         return []
@@ -302,11 +503,8 @@ Example:
 
         if response:
             try:
-                json_str = response
-                if "```json" in response:
-                    json_str = response.split("```json")[1].split("```")[0]
-
-                validation = json.loads(json_str.strip())
+                json_str = self._extract_json_from_response(response)
+                validation = json.loads(json_str)
                 return validation
 
             except:
@@ -393,11 +591,11 @@ RULES:
             if response and len(response.strip()) > 50:
                 return response
             else:
-                print("[WARN] AI executive summary too short, using fallback")
+                logger.warning("AI executive summary too short, using fallback")
                 return self._generate_fallback_summary(scan_results)
 
         except Exception as e:
-            print(f"[ERROR] Executive summary generation failed: {e}")
+            logger.error(f"Executive summary generation failed: {e}")
             return self._generate_fallback_summary(scan_results)
 
     def _generate_fallback_summary(self, scan_results):

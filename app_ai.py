@@ -1,19 +1,28 @@
 import streamlit as st
 import json
+import logging
 from datetime import datetime
 from groq_orchestrator import GroqOrchestrator
 from subdomain_scanner import SubdomainScanner
 from vulnerability_detector import VulnerabilityDetector
 from report_generator import ReportGenerator
 from landing_page import show_landing_page
-from login_page import show_login_page, show_register_page, show_logout_button
+from login_page import show_login_page, show_register_page, show_logout_button, update_user_profile
 from security_agent import SecurityAgent
 from remediation_engine import RemediationEngine
 from threat_intel_agent import ThreatIntelAgent
 from self_training_agent import SelfTrainingAgent
-from chatbot_component import render_chatbot, _log_activity
+from agentic_pentest_runner import AgenticPentestRunner
+from soc_copilot import SOCCopilot
+from reports_db import ReportsDB
+from chatbot_component import render_chatbot, _log_activity, ask_chatbot_about_report
 from admin_logger import get_all_logs, log_activity as admin_log_activity, get_registered_users_count, get_total_logins, get_failed_logins
 from login_page import load_users
+
+# Reduce noisy Tornado websocket disconnect tracebacks when client reconnects/closes.
+logging.getLogger("tornado.websocket").setLevel(logging.ERROR)
+logging.getLogger("tornado.application").setLevel(logging.ERROR)
+logging.getLogger("tornado.general").setLevel(logging.ERROR)
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -28,7 +37,7 @@ st.set_page_config(
 # ══════════════════════════════════════════════════════════════════════════════
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 html, body,
 [data-testid="stAppViewContainer"],
@@ -68,18 +77,18 @@ header { background: transparent !important; }
 SCANNER_CSS = """
 <style>
 :root {
-    --accent: #818cf8;
-    --accent2: #6366f1;
-    --accent-glow: rgba(99,102,241,.25);
+    --accent: #00d4ff;
+    --accent2: #a855f7;
+    --accent-glow: rgba(0,212,255,.25);
     --neon: #34d399;
-    --neon2: #818cf8;
+    --neon2: #06b6d4;
     --warn: #fb923c;
     --danger: #f87171;
-    --bg: #06090f;
+    --bg: #02020a;
     --card: rgba(255,255,255,.028);
     --card-hover: rgba(255,255,255,.045);
     --border: rgba(255,255,255,.06);
-    --border-hover: rgba(99,102,241,.25);
+    --border-hover: rgba(0,212,255,.25);
     --text: #e2e8f0;
     --text-secondary: #94a3b8;
     --muted: #475569;
@@ -89,25 +98,25 @@ SCANNER_CSS = """
 
 /* ── TYPOGRAPHY ── */
 h1 {
-    font-family: 'Outfit', sans-serif !important; font-weight: 800 !important;
+    font-family: 'Syne', sans-serif !important; font-weight: 800 !important;
     font-size: 2rem !important; color: var(--text) !important;
     letter-spacing: -.03em !important; line-height: 1.2 !important;
 }
 h2 {
-    font-family: 'Outfit', sans-serif !important; font-weight: 700 !important;
+    font-family: 'Syne', sans-serif !important; font-weight: 700 !important;
     font-size: 1.35rem !important; color: var(--text) !important;
     letter-spacing: -.02em !important;
 }
 h3 {
-    font-family: 'Outfit', sans-serif !important; font-weight: 600 !important;
+    font-family: 'Syne', sans-serif !important; font-weight: 600 !important;
     font-size: 1.1rem !important; color: var(--text) !important;
 }
 h4 {
-    font-family: 'Outfit', sans-serif !important; font-weight: 600 !important;
+    font-family: 'Syne', sans-serif !important; font-weight: 600 !important;
     font-size: .95rem !important; color: var(--text-secondary) !important;
 }
 p, li {
-    font-family: 'Inter', sans-serif !important;
+    font-family: 'Space Grotesk', sans-serif !important;
     color: var(--text-secondary) !important;
     font-size: .9rem !important;
     line-height: 1.6 !important;
@@ -136,39 +145,66 @@ button[kind="header"] span {
 .dash-header {
     display: flex; align-items: center; justify-content: space-between;
     padding: 20px 28px; flex-wrap: wrap; gap: 14px;
-    background: linear-gradient(135deg, rgba(99,102,241,.06) 0%, rgba(52,211,153,.04) 100%);
-    border: 1px solid rgba(99,102,241,.1);
+    background: linear-gradient(135deg, rgba(0,212,255,.06) 0%, rgba(168,85,247,.06) 100%);
+    border: 1px solid rgba(0,212,255,.12);
     border-radius: 20px; margin-bottom: 28px;
     position: relative; overflow: hidden;
 }
 .dash-header::before {
     content:''; position:absolute; top:0; left:0; right:0; height:2px;
-    background: linear-gradient(90deg, transparent, #818cf8, #34d399, transparent);
+    background: linear-gradient(90deg, transparent, #00d4ff, #a855f7, transparent);
 }
 .dash-header::after {
     content:''; position:absolute; top:-50%; right:-20%;
     width: 300px; height: 300px;
-    background: radial-gradient(circle, rgba(99,102,241,.08) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(0,212,255,.08) 0%, transparent 70%);
     border-radius: 50%; pointer-events: none;
 }
 .hdr-logo { display: flex; align-items: center; gap: 16px; z-index: 1; }
+.brand-logo-ring {
+    position: relative; width: 40px; height: 40px;
+    display: flex; align-items: center; justify-content: center;
+}
+.brand-logo-bg {
+    position: absolute; inset: 0; border-radius: 11px;
+    background: linear-gradient(135deg, rgba(0,212,255,.15), rgba(168,85,247,.15));
+    border: 1px solid rgba(0,212,255,.25);
+}
+.brand-logo-spin {
+    position: absolute; inset: -3px; border-radius: 13px;
+    background: conic-gradient(from 0deg, transparent 0%, #06b6d4 30%, transparent 60%);
+    animation: spinGlow 4s linear infinite;
+    mask: radial-gradient(farthest-side, transparent calc(100% - 2px), white calc(100% - 2px));
+    opacity: .6;
+}
+@keyframes spinGlow { to { transform: rotate(360deg); } }
+.brand-logo-icon {
+    font-size: 1.1rem; position: relative; z-index: 1;
+    line-height: 1;
+    background: linear-gradient(135deg, #00d4ff, #a855f7);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: drop-shadow(0 0 8px rgba(0,212,255,.35));
+}
 .hdr-icon {
     width: 48px; height: 48px;
-    background: linear-gradient(135deg, rgba(99,102,241,.15), rgba(52,211,153,.1));
-    border: 1px solid rgba(99,102,241,.25);
-    border-radius: 14px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 1.4rem; flex-shrink: 0;
-    box-shadow: 0 4px 16px rgba(99,102,241,.12);
+    flex-shrink: 0;
 }
 .hdr-title {
-    font-family: 'Outfit', sans-serif !important; font-size: 1.3rem;
-    font-weight: 800; color: #e2e8f0 !important;
-    letter-spacing: -.02em; margin: 0;
+    font-family: 'Syne', sans-serif !important; font-size: 1.3rem;
+    font-weight: 500; color: #e2e8f0 !important; letter-spacing: -.02em; margin: 0;
+    text-transform: uppercase;
+}
+.hdr-title em {
+    font-style: normal;
+    background: linear-gradient(90deg, #00d4ff, #a855f7);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 .hdr-sub {
     font-family: 'JetBrains Mono', monospace; font-size: .68rem;
-    color: #64748b; letter-spacing: .04em; margin-top: 2px;
+    color: #f5f5f5; letter-spacing: .04em; margin-top: 2px;
 }
 .hdr-badge {
     display: flex; align-items: center; gap: 8px;
@@ -209,7 +245,7 @@ button[kind="header"] span {
     color: #64748b !important; font-weight: 500 !important;
 }
 [data-testid="stMetricValue"] {
-    font-family: 'Outfit', sans-serif !important; font-size: 1.8rem !important;
+    font-family: 'Syne', sans-serif !important; font-size: 1.8rem !important;
     font-weight: 800 !important; color: #e2e8f0 !important;
 }
 
@@ -223,7 +259,7 @@ button[kind="header"] span {
     background: rgba(255,255,255,.035) !important;
     border: 1px solid rgba(255,255,255,.08) !important;
     border-radius: 14px !important; color: #e2e8f0 !important;
-    font-family: 'Inter', sans-serif !important; font-size: .9rem !important;
+    font-family: 'Space Grotesk', sans-serif !important; font-size: .9rem !important;
     padding: 14px 18px !important;
     transition: all .25s cubic-bezier(.4,0,.2,1) !important;
     caret-color: #818cf8 !important;
@@ -236,33 +272,33 @@ button[kind="header"] span {
 
 /* ── BUTTONS ── */
 .stButton > button[kind="primary"] {
-    background: linear-gradient(135deg, #6366f1, #818cf8) !important;
+    background: linear-gradient(135deg, #06b6d4, #a855f7) !important;
     color: #fff !important;
-    font-family: 'Outfit', sans-serif !important; font-weight: 700 !important;
+    font-family: 'Syne', sans-serif !important; font-weight: 700 !important;
     font-size: .92rem !important; border: none !important; border-radius: 14px !important;
     padding: 14px 24px !important; letter-spacing: .01em !important;
-    box-shadow: 0 4px 20px rgba(99,102,241,.3) !important;
+    box-shadow: 0 4px 20px rgba(0,212,255,.26) !important;
     transition: all .25s cubic-bezier(.4,0,.2,1) !important;
 }
 .stButton > button[kind="primary"]:hover {
     transform: translateY(-2px) !important;
-    box-shadow: 0 8px 32px rgba(99,102,241,.45) !important;
+    box-shadow: 0 8px 32px rgba(0,212,255,.35) !important;
 }
 .stButton > button[kind="secondary"] {
     background: rgba(255,255,255,.035) !important; color: #e2e8f0 !important;
     border: 1px solid rgba(255,255,255,.08) !important; border-radius: 14px !important;
-    font-family: 'Outfit', sans-serif !important; font-weight: 600 !important;
+    font-family: 'Syne', sans-serif !important; font-weight: 600 !important;
     transition: all .25s !important;
 }
 .stButton > button[kind="secondary"]:hover {
-    border-color: rgba(99,102,241,.3) !important; color: #818cf8 !important;
+    border-color: rgba(0,212,255,.35) !important; color: #00d4ff !important;
 }
 
 /* Sign-out */
 div.sign-out-btn button {
     background: rgba(248,113,113,.06) !important; color: #fca5a5 !important;
     border: 1px solid rgba(248,113,113,.15) !important; border-radius: 12px !important;
-    font-family: 'Outfit', sans-serif !important; font-weight: 600 !important;
+    font-family: 'Syne', sans-serif !important; font-weight: 600 !important;
     width: 100% !important; transition: all .2s !important;
 }
 div.sign-out-btn button:hover {
@@ -288,7 +324,7 @@ div.sign-out-btn button:hover {
     background: rgba(255,255,255,.025) !important;
     border: 1px solid rgba(255,255,255,.06) !important;
     border-radius: 14px !important; color: #e2e8f0 !important;
-    font-family: 'Outfit', sans-serif !important; font-weight: 600 !important;
+    font-family: 'Syne', sans-serif !important; font-weight: 600 !important;
     font-size: .92rem !important;
     transition: all .25s !important;
 }
@@ -303,7 +339,7 @@ div.sign-out-btn button:hover {
 /* ── ALERTS ── */
 .stAlert {
     border-radius: 14px !important;
-    font-family: 'Inter', sans-serif !important; font-size: .85rem !important;
+    font-family: 'Space Grotesk', sans-serif !important; font-size: .85rem !important;
     border: none !important;
 }
 
@@ -312,7 +348,7 @@ div.sign-out-btn button:hover {
     background: rgba(255,255,255,.03) !important;
     border: 1px solid rgba(255,255,255,.08) !important;
     border-radius: 14px !important; color: #e2e8f0 !important;
-    font-family: 'Outfit', sans-serif !important; font-weight: 600 !important;
+    font-family: 'Syne', sans-serif !important; font-weight: 600 !important;
     transition: all .25s !important;
 }
 .stDownloadButton > button:hover {
@@ -366,7 +402,7 @@ div.sign-out-btn button:hover {
     margin-bottom: 6px; text-transform: uppercase; font-weight: 600;
 }
 .step-card-text {
-    font-size: .88rem; color: #94a3b8; font-family: 'Outfit', sans-serif;
+    font-size: .88rem; color: #94a3b8; font-family: 'Syne', sans-serif;
     font-weight: 500;
 }
 
@@ -384,12 +420,30 @@ div.sign-out-btn button:hover {
 
 /* ── FOOTER ── */
 .site-footer {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
     text-align: center; padding: 28px;
-    font-family: 'JetBrains Mono', monospace; font-size: .68rem;
+    font-family: 'JetBrains Mono', monospace; font-size: .9rem;
     letter-spacing: .06em; color: #475569; margin-top: 36px;
     border-top: 1px solid rgba(255,255,255,.04);
 }
-.site-footer em { color: #818cf8; font-style: normal; }
+.site-footer em { color: #00d4ff; font-style: normal; }
+.site-footer-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+}
+.site-footer-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .56rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: #64748b;
+}
+.foot-logo { width: 30px; height: 30px; }
+.foot-logo .brand-logo-bg { border-radius: 8px; }
+.foot-logo .brand-logo-spin { inset: -2px; border-radius: 10px; }
+.foot-logo .brand-logo-icon { font-size: .72rem; }
 
 /* ── CODE BLOCKS ── */
 [data-testid="stCode"] {
@@ -426,8 +480,8 @@ section[data-testid="stSidebar"] { transition: transform .3s ease !important; }
     color: #64748b; margin-bottom: 8px; font-weight: 500;
 }
 .glow-card .card-value {
-    font-family: 'Outfit', sans-serif; font-size: 1.9rem;
-    font-weight: 800; color: #e2e8f0; line-height: 1;
+    font-family: 'Syne', sans-serif; font-size: 1.9rem;
+    font-weight: 500; color: #e2e8f0; line-height: 1;
 }
 .glow-card .card-delta {
     font-family: 'JetBrains Mono', monospace; font-size: .7rem;
@@ -477,6 +531,7 @@ section[data-testid="stSidebar"] { transition: transform .3s ease !important; }
 # ── Session defaults ──────────────────────────────────────────────────────────
 for k, v in {
     'page': 'landing',
+    'dashboard_page': 'dashboard',
     'authenticated': False,
     'show_register': False,
     'scan_completed': False,
@@ -492,6 +547,10 @@ for k, v in {
     'fix_codes': {},
     'threat_intel_summary': None,
     'self_training_result': None,
+    'agentic_pentest_result': None,
+    'soc_triage_result': None,
+    'last_saved_scan_report_id': None,
+    'last_saved_pentest_report_id': None,
 }.items():
     if k not in st.session_state:
         st.session_state[k] = v
@@ -529,10 +588,16 @@ else:
     st.markdown("""
     <div class="dash-header">
         <div class="hdr-logo">
-            <div class="hdr-icon">🛡️</div>
+            <div class="hdr-icon">
+                <div class="brand-logo-ring">
+                    <div class="brand-logo-bg"></div>
+                    <div class="brand-logo-spin"></div>
+                    <span class="brand-logo-icon">🛡</span>
+                </div>
+            </div>
             <div>
-                <div class="hdr-title">VulnSage Scanner</div>
-                <div class="hdr-sub">Groq AI · ML Detection · Smart Crawling</div>
+                <div class="hdr-title"><em>VULN</em>SAGE </div>
+                <div class="hdr-sub">AI-Powered Web Vulnerability Scanner</div>
             </div>
         </div>
         <div class="hdr-badge">
@@ -542,6 +607,71 @@ else:
     """, unsafe_allow_html=True)
 
     show_logout_button()
+
+    # Separate profile page for authenticated users
+    if st.session_state.get("dashboard_page", "dashboard") == "profile":
+        st.markdown('<div class="div-label"><span>Profile</span></div>', unsafe_allow_html=True)
+
+        current_user = st.session_state.get("user_info", {})
+        current_username = st.session_state.get("username", "")
+        current_name = current_user.get("name", current_username)
+        current_email = current_user.get("email", "")
+
+        p_left, p_right = st.columns([2, 1])
+        with p_left:
+            st.markdown("""
+            <div style="background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.14);
+                border-radius:14px;padding:16px 18px;margin-bottom:12px;">
+                <div style="font-family:'Syne',sans-serif;color:#e2e8f0;font-size:1.05rem;font-weight:700;">Update Your Profile</div>
+                <div style="font-family:'Space Grotesk',sans-serif;color:#94a3b8;font-size:.85rem;margin-top:4px;">
+                    Manage your account details. Username and email must remain unique.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            with st.form("profile_page_update_form", clear_on_submit=False):
+                p_name = st.text_input("Full Name", value=current_name, key="profile_page_name")
+                p_username = st.text_input("Username", value=current_username, key="profile_page_username")
+                p_email = st.text_input("Email", value=current_email, key="profile_page_email")
+
+                c_save, c_back = st.columns(2)
+                with c_save:
+                    save_profile = st.form_submit_button("Save Profile", use_container_width=True)
+                with c_back:
+                    back_dashboard = st.form_submit_button("Back to Dashboard", use_container_width=True)
+
+            if save_profile:
+                ok, msg, updated_user, resolved_username = update_user_profile(
+                    current_username=current_username,
+                    new_username=p_username,
+                    new_name=p_name,
+                    new_email=p_email
+                )
+                if ok:
+                    st.session_state.username = resolved_username
+                    st.session_state.user_info = {**st.session_state.get("user_info", {}), **(updated_user or {})}
+                    admin_log_activity(resolved_username, "Updated profile details")
+                    st.success(msg)
+                    st.rerun()
+                else:
+                    st.error(msg)
+
+            if back_dashboard:
+                st.session_state.dashboard_page = "dashboard"
+                st.rerun()
+
+        with p_right:
+            st.markdown(f"""
+            <div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);
+                border-radius:14px;padding:14px 16px;">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.12em;color:#64748b;text-transform:uppercase;">Current Account</div>
+                <div style="margin-top:10px;font-family:'Syne',sans-serif;color:#e2e8f0;font-size:.92rem;">{current_name}</div>
+                <div style="font-family:'JetBrains Mono',monospace;color:#94a3b8;font-size:.72rem;margin-top:2px;">@{current_username}</div>
+                <div style="font-family:'Space Grotesk',sans-serif;color:#94a3b8;font-size:.8rem;margin-top:10px;">{current_email}</div>
+                <div style="margin-top:10px;font-family:'JetBrains Mono',monospace;color:#34d399;font-size:.62rem;">Role: {current_user.get('role', 'user')}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        st.stop()
 
     # ── Sidebar ───────────────────────────────────────────────────────────────
     with st.sidebar:
@@ -601,7 +731,7 @@ else:
         st.header("🤖 AI Security Agent")
         st.markdown("""
         <div style="background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.12);
-            border-radius:12px;padding:13px 16px;font-family:'Inter',sans-serif;font-size:.8rem;color:#94a3b8;margin-bottom:14px;">
+            border-radius:12px;padding:13px 16px;font-family:'Space Grotesk',sans-serif;font-size:.8rem;color:#94a3b8;margin-bottom:14px;">
             Autonomous vulnerability analysis &amp; remediation
         </div>""", unsafe_allow_html=True)
 
@@ -656,7 +786,7 @@ else:
             st.header("📊 History")
             st.markdown(f"""
             <div style="background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.12);
-                border-radius:12px;padding:13px 16px;font-family:'Inter',sans-serif;font-size:.8rem;color:#94a3b8;">
+                border-radius:12px;padding:13px 16px;font-family:'Space Grotesk',sans-serif;font-size:.8rem;color:#94a3b8;">
                 Total Scans: <span style="color:#818cf8;font-weight:700;">{len(st.session_state.scan_history)}</span>
             </div>""", unsafe_allow_html=True)
             if st.button("Clear History"):
@@ -689,6 +819,216 @@ else:
     st.markdown("<br>", unsafe_allow_html=True)
 
     # ── Scan Logic ────────────────────────────────────────────────────────────
+    st.markdown('<div class="div-label"><span>Agentic Pentesting</span></div>', unsafe_allow_html=True)
+    with st.expander("Advanced SQLi/XSS Pentesting + AI Agent Analysis", expanded=False):
+        pentest_target_url = st.text_input(
+            "Pentest Target URL",
+            value=target_url if target_url else "",
+            key="agentic_pentest_target_url",
+            help="Authorized scope only",
+        )
+        pentest_params_text = st.text_area(
+            "Parameters JSON",
+            value='{"id":"1","q":"test"}',
+            key="agentic_pentest_params_json",
+            height=110,
+        )
+
+        p1, p2, p3 = st.columns(3)
+        with p1:
+            pentest_enable_time_based = st.checkbox("Time-based blind SQLi", value=True, key="agentic_pentest_enable_time")
+        with p2:
+            pentest_enable_ai = st.checkbox("Agentic AI analysis", value=True, key="agentic_pentest_enable_ai")
+        with p3:
+            pentest_time_retries = st.slider("Timing retries", 1, 5, 2, key="agentic_pentest_timing_retries")
+
+        p4, p5, p6 = st.columns(3)
+        with p4:
+            pentest_enable_paths = st.checkbox("Attack path correlation", value=True, key="agentic_pentest_enable_paths")
+        with p5:
+            pentest_enable_fixes = st.checkbox("AI remediation fixes", value=True, key="agentic_pentest_enable_fixes")
+        with p6:
+            pentest_enable_training = st.checkbox("Self-training model", value=False, key="agentic_pentest_enable_training")
+
+        p7, p8, p9 = st.columns(3)
+        with p7:
+            pentest_intel_mode = st.selectbox("Threat Intel Source", ["cached", "live", "off"], index=0, key="agentic_pentest_intel_mode")
+        with p8:
+            pentest_intel_days = st.slider("Intel lookback days", 7, 90, 30, key="agentic_pentest_intel_days")
+        with p9:
+            pentest_intel_items = st.slider("Max intel items", 50, 300, 120, 10, key="agentic_pentest_intel_items")
+
+        pentest_run_button = st.button("Run Agentic Pentest", type="primary", use_container_width=True)
+
+        if pentest_run_button:
+            if not pentest_target_url:
+                st.warning("Please enter a pentest target URL.")
+            else:
+                try:
+                    pentest_params = json.loads(pentest_params_text)
+                    if not isinstance(pentest_params, dict):
+                        raise ValueError("Parameters must be a JSON object.")
+
+                    with st.spinner("Running penetration tests and agentic analysis..."):
+                        pentest_runner = AgenticPentestRunner()
+                        pentest_result = pentest_runner.run(
+                            url=pentest_target_url.strip(),
+                            params=pentest_params,
+                            method="GET",
+                            enable_time_based=pentest_enable_time_based,
+                            time_retries=pentest_time_retries,
+                            enable_agentic_ai=pentest_enable_ai,
+                            enable_attack_paths=pentest_enable_paths,
+                            enable_remediation_fixes=pentest_enable_fixes,
+                            threat_intel_mode=pentest_intel_mode,
+                            intel_days=pentest_intel_days,
+                            intel_max_items=pentest_intel_items,
+                            enable_self_training=pentest_enable_training,
+                        )
+                    st.session_state.agentic_pentest_result = pentest_result
+                    pentest_report_id = ReportsDB().save_pentest_report(
+                        pentest_data=pentest_result,
+                        target_url=pentest_target_url.strip(),
+                        username=st.session_state.get("username", "unknown"),
+                    )
+                    st.session_state.last_saved_pentest_report_id = pentest_report_id
+                    _log_activity(f"Agentic pentest complete on: {pentest_target_url}")
+                    if pentest_report_id:
+                        st.success(f"Agentic pentest completed. Report saved as: {pentest_report_id}")
+                    else:
+                        st.success("Agentic pentest completed.")
+                except Exception as e:
+                    st.error(f"Agentic pentest failed: {e}")
+
+        pentest_output = st.session_state.get("agentic_pentest_result")
+        if pentest_output:
+            pentest_summary = pentest_output.get("summary", {})
+            sm1, sm2, sm3, sm4 = st.columns(4)
+            with sm1:
+                st.metric("Total Findings", pentest_summary.get("total_findings", 0))
+            with sm2:
+                st.metric("Likely SQLi", pentest_summary.get("likely_sqli_count", 0))
+            with sm3:
+                st.metric("Reflected XSS", pentest_summary.get("reflected_xss_count", 0))
+            with sm4:
+                st.metric("Time-based SQLi", pentest_summary.get("time_based_vulnerable_count", 0))
+
+            findings_tab, ai_tab, path_tab, fix_tab, intel_tab = st.tabs(
+                ["Pentest Findings", "Agent Analysis", "Attack Paths", "Remediation Fixes", "Threat Intel"]
+            )
+
+            with findings_tab:
+                pentest_findings = pentest_output.get("findings", [])
+                if not pentest_findings:
+                    st.info("No high-confidence pentest findings.")
+                else:
+                    for idx, f in enumerate(pentest_findings, 1):
+                        sev = f.get("severity", "Medium")
+                        color = {"Critical": "#f87171", "High": "#fb923c", "Medium": "#fbbf24", "Low": "#34d399"}.get(sev, "#94a3b8")
+                        st.markdown(
+                            f"""
+                            <div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);
+                                border-left:3px solid {color};border-radius:0 12px 12px 0;padding:12px 14px;margin-bottom:8px;">
+                                <div style="font-weight:600;color:#e2e8f0;">#{idx} {f.get('type', 'Unknown')}</div>
+                                <div style="font-size:.82rem;color:#94a3b8;">Severity: {sev} | Risk Score: {f.get('risk_score', 'N/A')} | CWE: {f.get('cwe_id', 'N/A')}</div>
+                                <div style="font-size:.82rem;color:#64748b;margin-top:6px;word-break:break-all;">{f.get('url', '')}</div>
+                                <div style="font-size:.86rem;color:#cbd5e1;margin-top:6px;">{f.get('description', '')}</div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                        with st.expander(f"Evidence #{idx}", expanded=False):
+                            st.json(f.get("evidence", {}))
+
+                cta1, cta2 = st.columns([2, 2])
+                with cta1:
+                    if st.button("Ask Chatbot About Pentest Report", key="ask_chatbot_pentest", use_container_width=True):
+                        st.session_state.report_chat_context = {
+                            "source": "agentic_pentest",
+                            "target_url": pentest_output.get("url"),
+                            "summary": pentest_summary,
+                            "findings": pentest_output.get("findings", [])[:20],
+                            "attack_paths": pentest_output.get("attack_paths", {}),
+                            "remediation_fixes": pentest_output.get("remediation_fixes", {}),
+                        }
+                        ask_chatbot_about_report(
+                            "Explain this pentest report in simple terms and give me top priorities with exact next actions.",
+                            source="agentic_pentest"
+                        )
+                        st.success("Chatbot opened with pentest context.")
+                        st.rerun()
+                with cta2:
+                    if st.button("Ask for Technical Fix Plan", key="ask_chatbot_pentest_fix", use_container_width=True):
+                        st.session_state.report_chat_context = {
+                            "source": "agentic_pentest_fix_plan",
+                            "target_url": pentest_output.get("url"),
+                            "summary": pentest_summary,
+                            "findings": pentest_output.get("findings", [])[:20],
+                            "remediation_fixes": pentest_output.get("remediation_fixes", {}),
+                        }
+                        ask_chatbot_about_report(
+                            "Create a technical remediation plan from this report with priorities, verification steps, and rollback notes.",
+                            source="agentic_pentest"
+                        )
+                        st.success("Chatbot opened with fix-planning context.")
+                        st.rerun()
+
+            with ai_tab:
+                if pentest_output.get("agentic_error"):
+                    st.warning(f"AI analysis error: {pentest_output['agentic_error']}")
+                agentic = pentest_output.get("agentic_analysis", {})
+                if not agentic:
+                    st.info("No agent analysis available for this run.")
+                elif not isinstance(agentic, dict):
+                    st.warning("AI analysis returned unexpected format.")
+                    st.write(str(agentic))
+                else:
+                    summary = agentic.get("analysis_summary", {})
+                    ac1, ac2, ac3 = st.columns(3)
+                    with ac1:
+                        st.metric("Total Analyzed", summary.get("total_vulnerabilities", 0))
+                    with ac2:
+                        st.metric("Critical", summary.get("critical_count", 0))
+                    with ac3:
+                        st.metric("High", summary.get("high_count", 0))
+                    with st.expander("Priority Queue", expanded=True):
+                        st.json(agentic.get("prioritized_vulnerabilities", [])[:10])
+                    with st.expander("AI Remediation Plan", expanded=False):
+                        st.json(agentic.get("remediation_plan", {}))
+
+            with path_tab:
+                paths = pentest_output.get("attack_paths", {})
+                if not paths:
+                    st.info("No attack-path analysis generated.")
+                else:
+                    pc1, pc2 = st.columns(2)
+                    with pc1:
+                        st.metric("Attack Chains", paths.get("attack_chains_count", 0))
+                    with pc2:
+                        st.metric("Critical Paths", len(paths.get("critical_paths", [])))
+                    with st.expander("Critical Attack Paths", expanded=True):
+                        st.json(paths.get("critical_paths", []))
+
+            with fix_tab:
+                fixes = pentest_output.get("remediation_fixes", {})
+                if not fixes:
+                    st.info("No remediation fix payload generated.")
+                else:
+                    for vuln_type, payload in fixes.items():
+                        with st.expander(vuln_type, expanded=False):
+                            st.json(payload)
+
+            with intel_tab:
+                intel = pentest_output.get("threat_intel", {})
+                if not intel:
+                    st.info("Threat intel enrichment disabled in this run.")
+                else:
+                    st.write({
+                        "collected_at": intel.get("collected_at"),
+                        "total_items": intel.get("total_items", 0),
+                        "sources": intel.get("sources", {}),
+                    })
+                    st.json(intel.get("items", [])[:20])
     if scan_button:
         if not target_url:
             st.warning("⚠️ Please enter a target URL or domain.")
@@ -745,7 +1085,7 @@ else:
                     <div style="display:flex;align-items:center;gap:14px;padding:13px 16px;
                         background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);
                         border-radius:12px;margin-bottom:6px;
-                        font-family:'Inter',sans-serif;font-size:.82rem;flex-wrap:wrap;">
+                        font-family:'Space Grotesk',sans-serif;font-size:.82rem;flex-wrap:wrap;">
                         <span style="color:#64748b;font-family:'JetBrains Mono',monospace;font-size:.7rem;min-width:22px;">{i:02d}</span>
                         <div style="flex:1;min-width:180px;">
                             <div style="color:#e2e8f0;word-break:break-all;font-weight:500;">{sub['url']}</div>
@@ -754,7 +1094,7 @@ else:
                                     title="Resolved IP">🌐 {ip}</span>
                                 <span style="font-family:'JetBrains Mono',monospace;font-size:.68rem;color:#64748b;"
                                     title="Server">⚙️ {server}</span>
-                                <span style="font-family:'Inter',sans-serif;font-size:.68rem;color:#94a3b8;"
+                                <span style="font-family:'Space Grotesk',sans-serif;font-size:.68rem;color:#94a3b8;"
                                     title="Page Title">📄 {title[:40]}</span>
                             </div>
                         </div>
@@ -795,6 +1135,10 @@ else:
                 vulnerabilities=all_vulns, orchestrator=orchestrator,
                 detailed=enable_detailed_report
             )
+            soc_triage = SOCCopilot(orchestrator=orchestrator).triage(
+                vulnerabilities=all_vulns,
+                domain_info=domain_info
+            )
 
             pb.progress(100)
             stx.empty()
@@ -805,6 +1149,7 @@ else:
                 'subdomains': subdomains,
                 'vulnerabilities': all_vulns,
                 'final_report': final_report,
+                'soc_triage_result': soc_triage,
             })
             st.session_state.scan_history.append({
                 'timestamp': datetime.now().isoformat(),
@@ -813,9 +1158,18 @@ else:
                 'vulnerabilities_count': len(all_vulns),
                 'scanned_by': st.session_state.username
             })
+            saved_scan_report_id = ReportsDB().save_report(
+                report_data=final_report,
+                domain=domain_info['domain'],
+                username=st.session_state.get("username", "unknown"),
+            )
+            st.session_state.last_saved_scan_report_id = saved_scan_report_id
             _log_activity(f"Scan complete: {domain_info['domain']} — {len(all_vulns)} vulns found")
             admin_log_activity(st.session_state.username, f"Scanned {domain_info['domain']} — {len(subdomains)} subdomains, {len(all_vulns)} vulns")
-            st.success("✅ Scan complete!")
+            if saved_scan_report_id:
+                st.success(f"✅ Scan complete! Report saved as: {saved_scan_report_id}")
+            else:
+                st.success("✅ Scan complete!")
 
         except Exception as e:
             st.error(f"❌ Scan failed: {e}")
@@ -902,7 +1256,7 @@ else:
                             border-left:3px solid {SEV_COLORS[sev]};
                             border-radius:0 14px 14px 0;padding:18px 20px;margin-bottom:10px;">
                             <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap;">
-                                <span style="font-weight:700;color:#e2e8f0;font-size:.95rem;font-family:'Outfit',sans-serif;">{v['type']}</span>
+                                <span style="font-weight:700;color:#e2e8f0;font-size:.95rem;font-family:'Syne',sans-serif;">{v['type']}</span>
                                 <span style="font-family:'JetBrains Mono',monospace;font-size:.68rem;
                                     color:{SEV_COLORS[sev]};background:rgba(255,255,255,.03);
                                     border:1px solid rgba(255,255,255,.08);padding:3px 12px;border-radius:50px;">
@@ -915,15 +1269,85 @@ else:
                                 </span>
                             </div>
                             <div style="font-family:'JetBrains Mono',monospace;font-size:.78rem;color:#64748b;margin-bottom:10px;word-break:break-all;">{v['url']}</div>
-                            <div style="font-size:.88rem;color:#94a3b8;margin-bottom:8px;font-family:'Inter',sans-serif;line-height:1.6;">
+                            <div style="font-size:.88rem;color:#94a3b8;margin-bottom:8px;font-family:'Space Grotesk',sans-serif;line-height:1.6;">
                                 <strong style="color:#cbd5e1;">Description:</strong> {v['description']}
                             </div>
-                            <div style="font-size:.88rem;color:#94a3b8;font-family:'Inter',sans-serif;line-height:1.6;">
+                            <div style="font-size:.88rem;color:#94a3b8;font-family:'Space Grotesk',sans-serif;line-height:1.6;">
                                 <strong style="color:#cbd5e1;">Fix:</strong> {v['recommendation']}
                             </div>
                         </div>""", unsafe_allow_html=True)
                         if 'proof' in v:
                             st.code(v['proof'], language='http')
+
+        soc_data = st.session_state.get("soc_triage_result")
+        if soc_data:
+            st.markdown('<div class="div-label"><span>SOC Triage & Response</span></div>', unsafe_allow_html=True)
+
+            sla = soc_data.get("sla_status", {})
+            containment = soc_data.get("containment_steps", [])
+            tasks = soc_data.get("tasks", [])
+
+            sc1, sc2, sc3, sc4 = st.columns(4)
+            with sc1:
+                st.metric("SOC Tasks", soc_data.get("task_count", 0))
+            with sc2:
+                st.metric("Overdue", sla.get("overdue", 0))
+            with sc3:
+                st.metric("On Track", sla.get("on_track", 0))
+            with sc4:
+                st.metric("Containment", len(containment))
+
+            st.markdown(f"""
+            <div style="background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.14);
+                border-radius:14px;padding:14px 16px;margin-bottom:12px;">
+                <div style="font-family:'Syne',sans-serif;color:#e2e8f0;font-size:1rem;font-weight:700;">Incident Summary</div>
+                <div style="font-family:'Space Grotesk',sans-serif;color:#94a3b8;font-size:.88rem;line-height:1.6;margin-top:6px;">
+                    {soc_data.get('incident_summary', 'No summary available.')}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            if containment:
+                with st.expander("Containment Steps", expanded=True):
+                    for step in containment:
+                        pri = step.get("priority", "ROUTINE")
+                        pri_color = {"IMMEDIATE": "#f87171", "URGENT": "#fb923c", "ROUTINE": "#34d399"}.get(pri, "#94a3b8")
+                        st.markdown(f"""
+                        <div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);
+                            border-left:3px solid {pri_color};border-radius:0 12px 12px 0;padding:12px 14px;margin-bottom:8px;">
+                            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                                <span style="font-family:'JetBrains Mono',monospace;font-size:.66rem;color:{pri_color};
+                                    background:{pri_color}20;border:1px solid {pri_color}40;padding:3px 10px;border-radius:50px;">{pri}</span>
+                                <span style="font-family:'Syne',sans-serif;font-size:.88rem;color:#e2e8f0;font-weight:600;">{step.get('action', '')}</span>
+                            </div>
+                            <div style="font-family:'Space Grotesk',sans-serif;font-size:.82rem;color:#94a3b8;margin-top:6px;">
+                                {step.get('detail', '')}
+                            </div>
+                            <div style="font-family:'JetBrains Mono',monospace;font-size:.66rem;color:#64748b;margin-top:6px;">
+                                SLA: {step.get('sla', 'N/A')}
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+            if tasks:
+                with st.expander("Remediation Task Queue", expanded=False):
+                    task_rows = []
+                    for t in tasks:
+                        task_rows.append({
+                            "Task ID": t.get("task_id"),
+                            "Severity": t.get("severity"),
+                            "Priority": t.get("priority"),
+                            "Type": t.get("vuln_type"),
+                            "Owner": t.get("owner"),
+                            "Status": t.get("status"),
+                            "Response Due": t.get("response_due", "")[:19].replace("T", " "),
+                            "Fix Due": t.get("fix_due", "")[:19].replace("T", " "),
+                        })
+                    st.dataframe(task_rows, use_container_width=True, hide_index=True)
+
+            if soc_data.get("ai_triage"):
+                with st.expander("AI SOC Triage Notes", expanded=False):
+                    st.markdown(soc_data["ai_triage"])
 
         # ── AI Agent Results ──────────────────────────────────────────────────
         if st.session_state.agent_active and st.session_state.agent_analysis:
@@ -935,8 +1359,8 @@ else:
                 st.markdown("""
                 <div style="background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.12);
                     border-radius:14px;padding:16px;margin-bottom:16px;">
-                    <h4 style="color:#818cf8;margin:0 0 8px 0;font-family:'Outfit',sans-serif;font-size:1rem;">Agent Prioritization</h4>
-                    <p style="color:#94a3b8;font-size:.85rem;margin:0;font-family:'Inter',sans-serif;">
+                    <h4 style="color:#818cf8;margin:0 0 8px 0;font-family:'Syne',sans-serif;font-size:1rem;">Agent Prioritization</h4>
+                    <p style="color:#94a3b8;font-size:.85rem;margin:0;font-family:'Space Grotesk',sans-serif;">
                         AI agent analyzed and prioritized vulnerabilities based on risk, exploitability, and business impact.
                     </p>
                 </div>""", unsafe_allow_html=True)
@@ -952,7 +1376,7 @@ else:
                         border-left:3px solid {color};border-radius:0 12px 12px 0;margin-bottom:8px;">
                         <span style="font-family:'JetBrains Mono',monospace;font-size:1rem;color:{color};font-weight:700;">#{priority}</span>
                         <div style="flex:1;">
-                            <div style="font-weight:600;color:#e2e8f0;font-size:.9rem;font-family:'Outfit',sans-serif;">{vuln.get('type', 'Unknown')}</div>
+                            <div style="font-weight:600;color:#e2e8f0;font-size:.9rem;font-family:'Syne',sans-serif;">{vuln.get('type', 'Unknown')}</div>
                             <div style="font-family:'JetBrains Mono',monospace;font-size:.7rem;color:#64748b;">{vuln.get('url', '')}</div>
                         </div>
                         <span style="background:{color}15;border:1px solid {color}30;color:{color};
@@ -983,8 +1407,8 @@ else:
                             st.markdown(f"""
                             <div style="background:rgba(248,113,113,.06);border:1px solid rgba(248,113,113,.15);
                                 border-radius:12px;padding:14px;margin-bottom:8px;">
-                                <div style="font-weight:600;color:#fca5a5;font-size:.9rem;font-family:'Outfit',sans-serif;">{action.get('action', 'Action')}</div>
-                                <div style="color:#94a3b8;font-size:.8rem;margin-top:6px;font-family:'Inter',sans-serif;">
+                                <div style="font-weight:600;color:#fca5a5;font-size:.9rem;font-family:'Syne',sans-serif;">{action.get('action', 'Action')}</div>
+                                <div style="color:#94a3b8;font-size:.8rem;margin-top:6px;font-family:'Space Grotesk',sans-serif;">
                                     Est. time: {action.get('estimated_time', 'Unknown')} |
                                     Risk if delayed: {action.get('risk_if_delayed', 'Unknown')}
                                 </div>
@@ -996,8 +1420,8 @@ else:
                     st.markdown("""
                     <div style="background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.12);
                         border-radius:14px;padding:16px;margin-bottom:16px;">
-                        <h4 style="color:#818cf8;margin:0 0 8px 0;font-family:'Outfit',sans-serif;font-size:1rem;">Production-Ready Fixes</h4>
-                        <p style="color:#94a3b8;font-size:.85rem;margin:0;font-family:'Inter',sans-serif;">
+                        <h4 style="color:#818cf8;margin:0 0 8px 0;font-family:'Syne',sans-serif;font-size:1rem;">Production-Ready Fixes</h4>
+                        <p style="color:#94a3b8;font-size:.85rem;margin:0;font-family:'Space Grotesk',sans-serif;">
                             AI-generated fix code for critical and high-severity vulnerabilities.
                         </p>
                     </div>""", unsafe_allow_html=True)
@@ -1035,10 +1459,45 @@ else:
                                 st.markdown("**✅ Verification:**")
                                 for cmd in fix_data['verification_commands']:
                                     st.code(cmd, language='bash')
-
         st.markdown('<div class="div-label"><span>AI Report</span></div>', unsafe_allow_html=True)
-        with st.expander("📄 Full AI Security Analysis Report", expanded=True):
+        with st.expander("Full AI Security Analysis Report", expanded=True):
             st.markdown(rep['markdown_report'])
+
+        rc1, rc2 = st.columns(2)
+        with rc1:
+            if st.button("Ask Chatbot About This Scan Report", key="ask_chatbot_scan_report", use_container_width=True):
+                st.session_state.report_chat_context = {
+                    "source": "scan_report",
+                    "domain_info": di,
+                    "subdomains_count": len(subs),
+                    "vulnerability_count": len(vulns),
+                    "vulnerabilities": vulns[:25],
+                    "agent_analysis": st.session_state.get("agent_analysis"),
+                    "remediation_plan": st.session_state.get("remediation_plan"),
+                    "report_markdown_preview": rep.get("markdown_report", "")[:4000],
+                }
+                ask_chatbot_about_report(
+                    "Summarize this scan report for stakeholders and list top 5 urgent fixes with rationale.",
+                    source="scan_report"
+                )
+                st.success("Chatbot opened with scan-report context.")
+                st.rerun()
+
+        with rc2:
+            if st.button("Ask Chatbot For Dev Fix Steps", key="ask_chatbot_scan_fix", use_container_width=True):
+                st.session_state.report_chat_context = {
+                    "source": "scan_report_dev_fix",
+                    "domain_info": di,
+                    "vulnerabilities": vulns[:25],
+                    "fix_codes": st.session_state.get("fix_codes", {}),
+                    "remediation_plan": st.session_state.get("remediation_plan"),
+                }
+                ask_chatbot_about_report(
+                    "Give me developer-focused remediation steps from this report including code-level fixes and verification commands.",
+                    source="scan_report"
+                )
+                st.success("Chatbot opened with developer-fix context.")
+                st.rerun()
 
         st.markdown('<div class="div-label"><span>Export</span></div>', unsafe_allow_html=True)
         ts = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -1170,7 +1629,7 @@ else:
                             border-radius:12px;margin-bottom:6px;flex-wrap:wrap;">
                             <span style="font-size:.65rem;color:#818cf8;letter-spacing:.08em;">USR</span>
                             <div style="flex:1;">
-                                <div style="color:#e2e8f0;font-weight:600;font-family:'Outfit',sans-serif;font-size:.92rem;">{udata.get('name', uname)}</div>
+                                <div style="color:#e2e8f0;font-weight:600;font-family:'Syne',sans-serif;font-size:.92rem;">{udata.get('name', uname)}</div>
                                 <div style="font-family:'JetBrains Mono',monospace;font-size:.7rem;color:#64748b;">@{uname}</div>
                             </div>
                             <span style="background:{role_color}15;border:1px solid {role_color}30;color:{role_color};
@@ -1253,13 +1712,32 @@ else:
                         </div>""", unsafe_allow_html=True)
                 else:
                     st.info("No activity recorded yet.")
+
+    # AGENTIC AI CHATBOT - positioned above footer
+    render_chatbot()
+
     st.markdown("""
     <div class="site-footer">
-        Powered by <em>Groq Cloud AI</em> + <em>Machine Learning</em>
-        &nbsp;&middot;&nbsp; For authorized security testing only
+        <span class="brand-logo-ring foot-logo">
+            <span class="brand-logo-bg"></span>
+            <span class="brand-logo-spin"></span>
+            <span class="brand-logo-icon">🛡</span>
+        </span>        <span class="site-footer-text">
+            <span>Powered by <em>VulnSage</em></span>
+            <span class="site-footer-sub">AI-Powered Web Vulnerability Scanner</span>
+            <span>� For authorized security testing only</span>
+        </span>
     </div>""", unsafe_allow_html=True)
 
     # ══════════════════════════════════════════════════════════════════════════
     # AGENTIC AI CHATBOT — bottom-right corner
     # ══════════════════════════════════════════════════════════════════════════
-    render_chatbot()
+
+
+
+
+
+
+
+
+

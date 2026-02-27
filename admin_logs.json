@@ -136,6 +136,46 @@
       "timestamp": "2026-02-26T21:37:46.837898",
       "date": "2026-02-26",
       "time": "21:37:46"
+    },
+    {
+      "username": "admin",
+      "role": "unknown",
+      "success": false,
+      "timestamp": "2026-02-27T15:26:00.262259",
+      "date": "2026-02-27",
+      "time": "15:26:00"
+    },
+    {
+      "username": "admin",
+      "role": "unknown",
+      "success": false,
+      "timestamp": "2026-02-27T15:26:09.241558",
+      "date": "2026-02-27",
+      "time": "15:26:09"
+    },
+    {
+      "username": "admin",
+      "role": "admin",
+      "success": true,
+      "timestamp": "2026-02-27T15:27:46.580177",
+      "date": "2026-02-27",
+      "time": "15:27:46"
+    },
+    {
+      "username": "admin",
+      "role": "admin",
+      "success": true,
+      "timestamp": "2026-02-27T15:51:52.089822",
+      "date": "2026-02-27",
+      "time": "15:51:52"
+    },
+    {
+      "username": "admin",
+      "role": "admin",
+      "success": true,
+      "timestamp": "2026-02-27T19:38:07.371059",
+      "date": "2026-02-27",
+      "time": "19:38:07"
     }
   ],
   "activity": [
@@ -159,6 +199,13 @@
       "timestamp": "2026-02-26T21:40:01.424034",
       "date": "2026-02-26",
       "time": "21:40:01"
+    },
+    {
+      "username": "admin",
+      "action": "Scanned sambhavmehra.me \u2014 1 subdomains, 6 vulns",
+      "timestamp": "2026-02-27T19:39:40.611641",
+      "date": "2026-02-27",
+      "time": "19:39:40"
     }
   ]
 }

@@ -1,0 +1,18 @@
+{
+  "reports": [
+    {
+      "id": "scan_20260227_193940",
+      "domain": "sambhavmehra.me",
+      "scan_date": "2026-02-27T19:39:40.606603",
+      "username": "admin",
+      "subdomains_count": 1,
+      "vulnerabilities_count": 6,
+      "critical_count": 0,
+      "high_count": 3,
+      "medium_count": 1,
+      "low_count": 2,
+      "file_path": "scan_20260227_193940.json"
+    }
+  ],
+  "last_updated": "2026-02-27T19:39:40.608687"
+}
