@@ -1,0 +1,211 @@
+{
+  "metadata": {
+    "report_id": "scan_20260227_193940",
+    "scan_date": "2026-02-27T19:39:40.606617",
+    "domain": "sambhavmehra.me",
+    "username": "admin"
+  },
+  "domain_info": {
+    "domain": "sambhavmehra.me",
+    "protocol": "https",
+    "is_subdomain": false,
+    "parent_domain": null,
+    "path": "/",
+    "confidence": 100,
+    "analysis": "The input URL has a clear domain and protocol, with no subdomains or query parameters."
+  },
+  "subdomains": [
+    {
+      "url": "https://sambhavmehra.me",
+      "subdomain": "sambhavmehra.me",
+      "ip_address": "216.198.79.1",
+      "status": 200,
+      "protocol": "https",
+      "server": "Vercel",
+      "title": "Sambhav Mehra | Cybersecurity Enthusiast"
+    }
+  ],
+  "vulnerabilities": [
+    {
+      "url": "https://sambhavmehra.me",
+      "type": "Missing Security Header: X-Frame-Options",
+      "severity": "High",
+      "confidence": 95,
+      "description": "X-Frame-Options header not set",
+      "location": "HTTP Response Headers",
+      "recommendation": "Add X-Frame-Options header to HTTP responses",
+      "cwe_id": "CWE-16",
+      "exploitation_difficulty": "Easy",
+      "business_impact": "The missing X-Frame-Options header poses a significant risk due to the potential for clickjacking attacks, which could lead to financial loss, data breaches, or reputational damage.",
+      "risk_score": 90,
+      "ai_validated": true,
+      "owasp_top10": "A05:2021",
+      "owasp_category": "Security Misconfiguration",
+      "verification_status": "confirmed",
+      "verification_signal_count": 2,
+      "verification_evidence": [
+        "Header missing verified via HTTP response inspection.",
+        "AI validation accepted this finding."
+      ],
+      "confidence_band": "Confirmed",
+      "proof": "Header missing verified via HTTP response inspection. | AI validation accepted this finding."
+    },
+    {
+      "url": "https://sambhavmehra.me",
+      "type": "Missing Security Header: Content-Security-Policy",
+      "severity": "High",
+      "confidence": 95,
+      "description": "Content-Security-Policy header not set",
+      "location": "HTTP Response Headers",
+      "recommendation": "Add Content-Security-Policy header to HTTP responses",
+      "cwe_id": "CWE-16",
+      "exploitation_difficulty": "Medium",
+      "business_impact": "The absence of Content-Security-Policy header increases the risk of cross-site scripting (XSS) attacks, which could lead to sensitive data theft, session hijacking, and other malicious activities, potentially causing significant financial loss and damage to the company's reputation.",
+      "risk_score": 80,
+      "ai_validated": true,
+      "owasp_top10": "A05:2021",
+      "owasp_category": "Security Misconfiguration",
+      "verification_status": "confirmed",
+      "verification_signal_count": 2,
+      "verification_evidence": [
+        "Header missing verified via HTTP response inspection.",
+        "AI validation accepted this finding."
+      ],
+      "confidence_band": "Confirmed",
+      "proof": "Header missing verified via HTTP response inspection. | AI validation accepted this finding."
+    },
+    {
+      "url": "https://sambhavmehra.me",
+      "type": "Potential Cross-Site Scripting (XSS)",
+      "severity": "High",
+      "confidence": 55,
+      "description": "Unescaped user input or dangerous JavaScript patterns detected",
+      "location": "Page content / Scripts",
+      "recommendation": "Implement output encoding and Content Security Policy",
+      "cwe_id": "CWE-79",
+      "exploitation_difficulty": "Medium",
+      "business_impact": "The potential for theft of user data, session hijacking, defacement of the website, or distribution of malware could lead to direct financial loss, reputational damage, and legal implications.",
+      "risk_score": 80,
+      "ai_validated": true,
+      "owasp_top10": "A03:2021",
+      "owasp_category": "Injection",
+      "verification_status": "probable",
+      "verification_signal_count": 2,
+      "verification_evidence": [
+        "AI validation accepted this finding.",
+        "XSS category indicators matched detector heuristics."
+      ],
+      "confidence_band": "Probable",
+      "proof": "AI validation accepted this finding. | XSS category indicators matched detector heuristics."
+    },
+    {
+      "type": "Missing Security Headers",
+      "severity": "Medium",
+      "confidence": 90,
+      "risk_score": 60,
+      "description": "The website is missing essential security headers such as Content-Security-Policy (CSP), X-Frame-Options, and X-Content-Type-Options to protect against various web attacks.",
+      "location": "https://sambhavmehra.me",
+      "proof": "None",
+      "recommendation": "Implement security headers to mitigate potential vulnerabilities. For example, add the following headers: Content-Security-Policy: default-src 'self'; X-Frame-Options: DENY; X-Content-Type-Options: nosniff",
+      "cwe_id": "CWE-16",
+      "url": "https://sambhavmehra.me",
+      "exploitation_difficulty": "Medium",
+      "business_impact": "The missing security headers could lead to unauthorized access to sensitive data, defacement of the website, or other malicious activities that could harm the business's reputation and operations.",
+      "ai_validated": true,
+      "owasp_top10": "A05:2021",
+      "owasp_category": "Security Misconfiguration",
+      "verification_status": "confirmed",
+      "verification_signal_count": 2,
+      "verification_evidence": [
+        "Header missing verified via HTTP response inspection.",
+        "AI validation accepted this finding."
+      ],
+      "confidence_band": "Confirmed"
+    },
+    {
+      "url": "https://sambhavmehra.me",
+      "type": "Missing Security Header: X-Content-Type-Options",
+      "severity": "Low",
+      "confidence": 95,
+      "description": "X-Content-Type-Options header not set",
+      "location": "HTTP Response Headers",
+      "recommendation": "Add X-Content-Type-Options header to HTTP responses",
+      "cwe_id": "CWE-16",
+      "exploitation_difficulty": "Medium",
+      "business_impact": "The vulnerability could potentially lead to cross-site scripting (XSS) attacks if specific conditions are met, impacting the confidentiality and integrity of user data.",
+      "risk_score": 55,
+      "ai_validated": true,
+      "owasp_top10": "A05:2021",
+      "owasp_category": "Security Misconfiguration",
+      "verification_status": "confirmed",
+      "verification_signal_count": 2,
+      "verification_evidence": [
+        "Header missing verified via HTTP response inspection.",
+        "AI validation accepted this finding."
+      ],
+      "confidence_band": "Confirmed",
+      "proof": "Header missing verified via HTTP response inspection. | AI validation accepted this finding."
+    },
+    {
+      "url": "https://sambhavmehra.me",
+      "type": "Missing Security Header: X-XSS-Protection",
+      "severity": "Low",
+      "confidence": 95,
+      "description": "X-XSS-Protection header not set",
+      "location": "HTTP Response Headers",
+      "recommendation": "Add X-XSS-Protection header to HTTP responses",
+      "cwe_id": "CWE-16",
+      "exploitation_difficulty": "Medium",
+      "business_impact": "The absence of X-XSS-Protection header could facilitate XSS attacks, potentially leading to session theft, unauthorized actions, and website defacement, with a medium impact on the business.",
+      "risk_score": 55,
+      "ai_validated": true,
+      "owasp_top10": "A05:2021",
+      "owasp_category": "Security Misconfiguration",
+      "verification_status": "confirmed",
+      "verification_signal_count": 3,
+      "verification_evidence": [
+        "Header missing verified via HTTP response inspection.",
+        "AI validation accepted this finding.",
+        "XSS category indicators matched detector heuristics."
+      ],
+      "confidence_band": "Confirmed",
+      "proof": "Header missing verified via HTTP response inspection. | AI validation accepted this finding."
+    }
+  ],
+  "summary": {
+    "scan_date": "2026-02-27T19:39:36.193286",
+    "target_domain": "sambhavmehra.me",
+    "subdomains_scanned": 1,
+    "total_vulnerabilities": 6,
+    "severity_breakdown": {
+      "Critical": 0,
+      "High": 3,
+      "Medium": 1,
+      "Low": 2,
+      "Info": 0
+    },
+    "verification_breakdown": {
+      "confirmed": 5,
+      "probable": 1,
+      "suspected": 0,
+      "info": 0
+    },
+    "vulnerability_types": {
+      "Missing Security Header: X-Frame-Options": 1,
+      "Missing Security Header: Content-Security-Policy": 1,
+      "Potential Cross-Site Scripting (XSS)": 1,
+      "Missing Security Headers": 1,
+      "Missing Security Header: X-Content-Type-Options": 1,
+      "Missing Security Header: X-XSS-Protection": 1
+    },
+    "risk_metrics": {
+      "average_risk_score": 70.0,
+      "max_risk_score": 90,
+      "min_risk_score": 55,
+      "high_risk_count": 3,
+      "overall_risk_level": "Critical"
+    }
+  },
+  "executive_summary": "### OVERALL SECURITY POSTURE\nThe overall security posture of sambhavmehra.me is rated as **Fair**. This rating is due to the presence of several high-severity vulnerabilities that could be exploited by attackers, but the absence of critical severity issues prevents a lower rating.\n\n### KEY FINDINGS\nThe security scan revealed several key findings, including **missing security headers** such as X-Frame-Options and Content-Security-Policy, as well as a **potential Cross-Site Scripting (XSS) vulnerability**. These issues can be exploited by attackers to launch targeted attacks.\n\n### BUSINESS RISK\nThe identified vulnerabilities pose a significant business risk, as they could be used to compromise user data, launch phishing attacks, or deface the website. This could lead to reputational damage and financial losses.\n\n### IMMEDIATE ACTIONS REQUIRED\nTo address the high-severity issues, the following actions are required:\n* Implement X-Frame-Options and Content-Security-Policy security headers\n* Conduct a thorough review of the website's code to identify and fix the potential XSS vulnerability\n* Perform regular security scans to identify and address new vulnerabilities\n\n### RECOMMENDATIONS\nTo improve the overall security posture, it is recommended to implement a **Web Application Firewall (WAF)** and conduct **regular security awareness training** for developers. Additionally, a **vulnerability management program** should be established to ensure timely identification and remediation of security issues.",
+  "markdown_report": "# \ud83d\udee1\ufe0f AI Security Scan Report\n\n## Target Information\n- **Domain:** sambhavmehra.me\n- **Scan Date:** 2026-02-27 19:39:40\n- **Scanner:** AI-Powered Vulnerability Scanner v2.1 (AI + ML)\n- **Powered by:** Groq Cloud AI + Machine Learning Model\n\n---\n\n## \ud83d\udcca Executive Summary\n\n### OVERALL SECURITY POSTURE\nThe overall security posture of sambhavmehra.me is rated as **Fair**. This rating is due to the presence of several high-severity vulnerabilities that could be exploited by attackers, but the absence of critical severity issues prevents a lower rating.\n\n### KEY FINDINGS\nThe security scan revealed several key findings, including **missing security headers** such as X-Frame-Options and Content-Security-Policy, as well as a **potential Cross-Site Scripting (XSS) vulnerability**. These issues can be exploited by attackers to launch targeted attacks.\n\n### BUSINESS RISK\nThe identified vulnerabilities pose a significant business risk, as they could be used to compromise user data, launch phishing attacks, or deface the website. This could lead to reputational damage and financial losses.\n\n### IMMEDIATE ACTIONS REQUIRED\nTo address the high-severity issues, the following actions are required:\n* Implement X-Frame-Options and Content-Security-Policy security headers\n* Conduct a thorough review of the website's code to identify and fix the potential XSS vulnerability\n* Perform regular security scans to identify and address new vulnerabilities\n\n### RECOMMENDATIONS\nTo improve the overall security posture, it is recommended to implement a **Web Application Firewall (WAF)** and conduct **regular security awareness training** for developers. Additionally, a **vulnerability management program** should be established to ensure timely identification and remediation of security issues.\n\n---\n\n## \ud83d\udcc8 Scan Statistics\n\n- **Subdomains Scanned:** 1\n- **Total Vulnerabilities Found:** 6\n\n### \ud83c\udfaf Groq AI Risk Assessment\n\n- **Overall Risk Level:** Critical\n- **Average Risk Score:** 70.0/100\n- **Highest Risk Score:** 90/100\n- **High Risk Findings:** 3\n\n### Severity Breakdown\n\n- \ud83d\udfe0 **High:** 3\n- \ud83d\udfe1 **Medium:** 1\n- \ud83d\udfe2 **Low:** 2\n\n### Vulnerability Types\n\n- **Missing Security Header: X-Frame-Options:** 1\n- **Missing Security Header: Content-Security-Policy:** 1\n- **Potential Cross-Site Scripting (XSS):** 1\n- **Missing Security Headers:** 1\n- **Missing Security Header: X-Content-Type-Options:** 1\n- **Missing Security Header: X-XSS-Protection:** 1\n\n### Verification Confidence\n\n- **Confirmed:** 5\n- **Probable:** 1\n- **Suspected:** 0\n- **Informational:** 0\n\n---\n\n## \ud83c\udf10 Discovered Subdomains\n\n1. **sambhavmehra.me**\n   - URL: `https://sambhavmehra.me`\n   - IP Address: `216.198.79.1`\n   - Status: 200\n   - Title: Sambhav Mehra | Cybersecurity Enthusiast\n\n---\n\n## \ud83d\udd0d Detailed Vulnerability Findings\n\n### \ud83d\udfe0 High Severity (3)\n\n#### 1. Missing Security Header: X-Frame-Options\n\n- **URL:** `https://sambhavmehra.me`\n- \ud83d\udd34 **Groq AI Risk Score: 90/100** (CRITICAL RISK)\n- **Confidence:** 95%\n- **Verification Status:** Confirmed\n- **Verification Signals:** 2\n- **Description:** X-Frame-Options header not set\n- **Location:** HTTP Response Headers\n- **CWE:** CWE-16\n- **Exploitation Difficulty:** Easy\n- **Business Impact:** The missing X-Frame-Options header poses a significant risk due to the potential for clickjacking attacks, which could lead to financial loss, data breaches, or reputational damage.\n- **Evidence:**\n  - Header missing verified via HTTP response inspection.\n  - AI validation accepted this finding.\n\n**\ud83d\udca1 Recommendation:**\nAdd X-Frame-Options header to HTTP responses\n\n**\ud83d\udd2c Proof of Concept:**\n```\nHeader missing verified via HTTP response inspection. | AI validation accepted this finding.\n```\n\n---\n\n#### 2. Missing Security Header: Content-Security-Policy\n\n- **URL:** `https://sambhavmehra.me`\n- \ud83d\udd34 **Groq AI Risk Score: 80/100** (CRITICAL RISK)\n- **Confidence:** 95%\n- **Verification Status:** Confirmed\n- **Verification Signals:** 2\n- **Description:** Content-Security-Policy header not set\n- **Location:** HTTP Response Headers\n- **CWE:** CWE-16\n- **Exploitation Difficulty:** Medium\n- **Business Impact:** The absence of Content-Security-Policy header increases the risk of cross-site scripting (XSS) attacks, which could lead to sensitive data theft, session hijacking, and other malicious activities, potentially causing significant financial loss and damage to the company's reputation.\n- **Evidence:**\n  - Header missing verified via HTTP response inspection.\n  - AI validation accepted this finding.\n\n**\ud83d\udca1 Recommendation:**\nAdd Content-Security-Policy header to HTTP responses\n\n**\ud83d\udd2c Proof of Concept:**\n```\nHeader missing verified via HTTP response inspection. | AI validation accepted this finding.\n```\n\n---\n\n#### 3. Potential Cross-Site Scripting (XSS)\n\n- **URL:** `https://sambhavmehra.me`\n- \ud83d\udd34 **Groq AI Risk Score: 80/100** (CRITICAL RISK)\n- **Confidence:** 55%\n- **Verification Status:** Probable\n- **Verification Signals:** 2\n- **Description:** Unescaped user input or dangerous JavaScript patterns detected\n- **Location:** Page content / Scripts\n- **CWE:** CWE-79\n- **Exploitation Difficulty:** Medium\n- **Business Impact:** The potential for theft of user data, session hijacking, defacement of the website, or distribution of malware could lead to direct financial loss, reputational damage, and legal implications.\n- **Evidence:**\n  - AI validation accepted this finding.\n  - XSS category indicators matched detector heuristics.\n\n**\ud83d\udca1 Recommendation:**\nImplement output encoding and Content Security Policy\n\n**\ud83d\udd2c Proof of Concept:**\n```\nAI validation accepted this finding. | XSS category indicators matched detector heuristics.\n```\n\n---\n\n### \ud83d\udfe1 Medium Severity (1)\n\n#### 1. Missing Security Headers\n\n- **URL:** `https://sambhavmehra.me`\n- \ud83d\udfe0 **Groq AI Risk Score: 60/100** (HIGH RISK)\n- **Confidence:** 90%\n- **Verification Status:** Confirmed\n- **Verification Signals:** 2\n- **Description:** The website is missing essential security headers such as Content-Security-Policy (CSP), X-Frame-Options, and X-Content-Type-Options to protect against various web attacks.\n- **Location:** https://sambhavmehra.me\n- **CWE:** CWE-16\n- **Exploitation Difficulty:** Medium\n- **Business Impact:** The missing security headers could lead to unauthorized access to sensitive data, defacement of the website, or other malicious activities that could harm the business's reputation and operations.\n- **Evidence:**\n  - Header missing verified via HTTP response inspection.\n  - AI validation accepted this finding.\n\n**\ud83d\udca1 Recommendation:**\nImplement security headers to mitigate potential vulnerabilities. For example, add the following headers: Content-Security-Policy: default-src 'self'; X-Frame-Options: DENY; X-Content-Type-Options: nosniff\n\n**\ud83d\udd2c Proof of Concept:**\n```\nNone\n```\n\n---\n\n### \ud83d\udfe2 Low Severity (2)\n\n#### 1. Missing Security Header: X-Content-Type-Options\n\n- **URL:** `https://sambhavmehra.me`\n- \ud83d\udfe1 **Groq AI Risk Score: 55/100** (MEDIUM RISK)\n- **Confidence:** 95%\n- **Verification Status:** Confirmed\n- **Verification Signals:** 2\n- **Description:** X-Content-Type-Options header not set\n- **Location:** HTTP Response Headers\n- **CWE:** CWE-16\n- **Exploitation Difficulty:** Medium\n- **Business Impact:** The vulnerability could potentially lead to cross-site scripting (XSS) attacks if specific conditions are met, impacting the confidentiality and integrity of user data.\n- **Evidence:**\n  - Header missing verified via HTTP response inspection.\n  - AI validation accepted this finding.\n\n**\ud83d\udca1 Recommendation:**\nAdd X-Content-Type-Options header to HTTP responses\n\n**\ud83d\udd2c Proof of Concept:**\n```\nHeader missing verified via HTTP response inspection. | AI validation accepted this finding.\n```\n\n---\n\n#### 2. Missing Security Header: X-XSS-Protection\n\n- **URL:** `https://sambhavmehra.me`\n- \ud83d\udfe1 **Groq AI Risk Score: 55/100** (MEDIUM RISK)\n- **Confidence:** 95%\n- **Verification Status:** Confirmed\n- **Verification Signals:** 3\n- **Description:** X-XSS-Protection header not set\n- **Location:** HTTP Response Headers\n- **CWE:** CWE-16\n- **Exploitation Difficulty:** Medium\n- **Business Impact:** The absence of X-XSS-Protection header could facilitate XSS attacks, potentially leading to session theft, unauthorized actions, and website defacement, with a medium impact on the business.\n- **Evidence:**\n  - Header missing verified via HTTP response inspection.\n  - AI validation accepted this finding.\n  - XSS category indicators matched detector heuristics.\n\n**\ud83d\udca1 Recommendation:**\nAdd X-XSS-Protection header to HTTP responses\n\n**\ud83d\udd2c Proof of Concept:**\n```\nHeader missing verified via HTTP response inspection. | AI validation accepted this finding.\n```\n\n---\n\n\n---\n\n## \ud83c\udfaf Recommended Actions\n\n### \u26a0\ufe0f High Priority Actions\n\n1. Schedule remediation for High severity issues within 7 days\n2. Review and update security policies\n3. Implement additional monitoring\n\n### \ud83d\udccb General Recommendations\n\n1. Conduct regular security assessments\n2. Implement Web Application Firewall (WAF)\n3. Enable security logging and monitoring\n4. Keep all software and dependencies updated\n5. Provide security awareness training to development team\n6. Implement secure coding practices\n7. Regular penetration testing\n\n---\n\n## \ud83d\udcdd Disclaimer\n\nThis report is generated by an AI-powered automated security scanner with machine learning capabilities. While we strive for accuracy, automated scans may produce false positives or miss certain vulnerabilities. This report should be used as part of a comprehensive security assessment program and reviewed by qualified security professionals.\n\n---\n\n*Report generated by AI Security Scanner v2.1 - Powered by Groq Cloud AI + ML Model*\n*Generated at: 2026-02-27 19:39:40*\n"
+}

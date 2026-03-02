@@ -1,0 +1,211 @@
+{
+  "registrations": [
+    {
+      "username": "Sambhavv",
+      "name": "Sambhav",
+      "timestamp": "2026-02-25T21:50:13.538981",
+      "date": "2026-02-25",
+      "time": "21:50:13"
+    }
+  ],
+  "logins": [
+    {
+      "username": "admin",
+      "role": "admin",
+      "success": true,
+      "timestamp": "2026-02-25T21:34:12.876853",
+      "date": "2026-02-25",
+      "time": "21:34:12"
+    },
+    {
+      "username": "Sambhavv",
+      "role": "unknown",
+      "success": false,
+      "timestamp": "2026-02-25T21:49:42.842929",
+      "date": "2026-02-25",
+      "time": "21:49:42"
+    },
+    {
+      "username": "Sambhavv",
+      "role": "unknown",
+      "success": false,
+      "timestamp": "2026-02-25T21:49:44.492313",
+      "date": "2026-02-25",
+      "time": "21:49:44"
+    },
+    {
+      "username": "Sambhavv",
+      "role": "user",
+      "success": true,
+      "timestamp": "2026-02-25T21:50:24.497641",
+      "date": "2026-02-25",
+      "time": "21:50:24"
+    },
+    {
+      "username": "admin",
+      "role": "admin",
+      "success": true,
+      "timestamp": "2026-02-25T21:55:09.293361",
+      "date": "2026-02-25",
+      "time": "21:55:09"
+    },
+    {
+      "username": "admin",
+      "role": "admin",
+      "success": true,
+      "timestamp": "2026-02-25T22:02:49.875268",
+      "date": "2026-02-25",
+      "time": "22:02:49"
+    },
+    {
+      "username": "admin",
+      "role": "admin",
+      "success": true,
+      "timestamp": "2026-02-25T22:05:32.311924",
+      "date": "2026-02-25",
+      "time": "22:05:32"
+    },
+    {
+      "username": "admin",
+      "role": "admin",
+      "success": true,
+      "timestamp": "2026-02-25T22:10:16.210292",
+      "date": "2026-02-25",
+      "time": "22:10:16"
+    },
+    {
+      "username": "admin",
+      "role": "admin",
+      "success": true,
+      "timestamp": "2026-02-25T22:20:47.834326",
+      "date": "2026-02-25",
+      "time": "22:20:47"
+    },
+    {
+      "username": "admin",
+      "role": "admin",
+      "success": true,
+      "timestamp": "2026-02-25T22:26:54.299488",
+      "date": "2026-02-25",
+      "time": "22:26:54"
+    },
+    {
+      "username": "admin",
+      "role": "admin",
+      "success": true,
+      "timestamp": "2026-02-26T13:21:06.138248",
+      "date": "2026-02-26",
+      "time": "13:21:06"
+    },
+    {
+      "username": "admin",
+      "role": "admin",
+      "success": true,
+      "timestamp": "2026-02-26T20:24:53.737444",
+      "date": "2026-02-26",
+      "time": "20:24:53"
+    },
+    {
+      "username": "admin",
+      "role": "admin",
+      "success": true,
+      "timestamp": "2026-02-26T20:37:08.313745",
+      "date": "2026-02-26",
+      "time": "20:37:08"
+    },
+    {
+      "username": "admin",
+      "role": "admin",
+      "success": true,
+      "timestamp": "2026-02-26T20:50:01.527449",
+      "date": "2026-02-26",
+      "time": "20:50:01"
+    },
+    {
+      "username": "admin",
+      "role": "admin",
+      "success": true,
+      "timestamp": "2026-02-26T21:36:47.682740",
+      "date": "2026-02-26",
+      "time": "21:36:47"
+    },
+    {
+      "username": "admin",
+      "role": "admin",
+      "success": true,
+      "timestamp": "2026-02-26T21:37:46.837898",
+      "date": "2026-02-26",
+      "time": "21:37:46"
+    },
+    {
+      "username": "admin",
+      "role": "unknown",
+      "success": false,
+      "timestamp": "2026-02-27T15:26:00.262259",
+      "date": "2026-02-27",
+      "time": "15:26:00"
+    },
+    {
+      "username": "admin",
+      "role": "unknown",
+      "success": false,
+      "timestamp": "2026-02-27T15:26:09.241558",
+      "date": "2026-02-27",
+      "time": "15:26:09"
+    },
+    {
+      "username": "admin",
+      "role": "admin",
+      "success": true,
+      "timestamp": "2026-02-27T15:27:46.580177",
+      "date": "2026-02-27",
+      "time": "15:27:46"
+    },
+    {
+      "username": "admin",
+      "role": "admin",
+      "success": true,
+      "timestamp": "2026-02-27T15:51:52.089822",
+      "date": "2026-02-27",
+      "time": "15:51:52"
+    },
+    {
+      "username": "admin",
+      "role": "admin",
+      "success": true,
+      "timestamp": "2026-02-27T19:38:07.371059",
+      "date": "2026-02-27",
+      "time": "19:38:07"
+    }
+  ],
+  "activity": [
+    {
+      "username": "admin",
+      "action": "Scanned sambhavmehra.me \u2014 1 subdomains, 7 vulns",
+      "timestamp": "2026-02-26T20:27:53.356240",
+      "date": "2026-02-26",
+      "time": "20:27:53"
+    },
+    {
+      "username": "admin",
+      "action": "Scanned sambhavmehra.me \u2014 1 subdomains, 6 vulns",
+      "timestamp": "2026-02-26T20:51:10.770093",
+      "date": "2026-02-26",
+      "time": "20:51:10"
+    },
+    {
+      "username": "admin",
+      "action": "Scanned sambhavmehra.me \u2014 1 subdomains, 6 vulns",
+      "timestamp": "2026-02-26T21:40:01.424034",
+      "date": "2026-02-26",
+      "time": "21:40:01"
+    },
+    {
+      "username": "admin",
+      "action": "Scanned sambhavmehra.me \u2014 1 subdomains, 6 vulns",
+      "timestamp": "2026-02-27T19:39:40.611641",
+      "date": "2026-02-27",
+      "time": "19:39:40"
+    }
+  ]
+}
